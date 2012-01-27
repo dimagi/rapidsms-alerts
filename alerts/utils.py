@@ -43,6 +43,11 @@ def trigger_notifications():
             comment = NotificationComment(notification=notif, user=None, text='notification created')
             comment.save()
 
+            def sms_send(user, content):
+                print 'stub out send sms [%s] to [%s]' % (content, user_name(user))
+
+            notif.trigger_sms(sms_send)
+
 def auto_escalate():
     for notif in Notification.objects.filter(is_open=True):
         if notif.autoescalate_due():
