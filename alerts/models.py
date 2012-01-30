@@ -17,6 +17,8 @@ class Notification(models.Model):
     alert_type = models.CharField(max_length=256) #fully-qualified python name of the corresponding AlertType class
     originating_location = models.ForeignKey(Location, blank=True, null=True)
 
+    sms_text = models.TextField(null=True, blank=True)
+
     owner = models.ForeignKey(User, null=True, blank=True)
     is_open = models.BooleanField(default=True)
     escalation_level = models.CharField(max_length=100)
@@ -100,7 +102,7 @@ class Notification(models.Model):
 
     def user_escalation_level(self, user):
         """determine at what escalation level this user is affiliated with the
-        alert (determines what actions that user may take"""
+        alert (determines what actions that user may take)"""
         vis = self.visible_to.filter(user=user)
         if len(vis) == 0:
             raise Exception('alert is not visible to user')
@@ -113,6 +115,11 @@ class Notification(models.Model):
             v = vis[0]
 
         return v.esc_level
+
+    def trigger_sms(self, sms_send):
+        if self.notify_sms:
+            for u in self.sms_users():
+                sms_send(u, self.sms_content())
 
     def __unicode__(self):
         return unicode(self.__dict__)
@@ -174,11 +181,15 @@ class NotificationVisibility(models.Model):
     user = models.ForeignKey(User, related_name='alerts_visible')
     esc_level = models.CharField(max_length=100)
 
+# TODO: this table will keep track of who has acknowledged an alert that is resolved.
+# this way, alerts don't disappear suddenly; they show up as resolved on the dashboard
+# until the user clicks 'dismiss' (or some timeout happens)
 class ResolutionAcknowledgement:
     pass
 
 # not a model! a subclass of this will be dynamically attached to the Notification
 # model, based on the Notification's alert_type
+# ONLY override the specified methods
 class NotificationType(object):
     def __init__(self, notif):
         self._notif = notif
@@ -213,25 +224,55 @@ class NotificationType(object):
             except IndexError:
                 return None
 
+    # MUST override
     @property
     def escalation_levels(self):
         """list the possible escalation levels for this type of alert,
         in order"""
         raise Exception('abstract method')
 
+    # MUST override
     def users_for_escalation_level(self, esc_level):
         """return the set of users responsible for this alert once it
         reaches the specified escalation level"""
         raise Exception('abstract method')
 
+    # MUST override
     def auto_escalation_interval(self, esc_level):
         """return the time interval (as a timedelta) the alert has spent
         at the given level after which it is auto-escalated to the next
         level"""
         raise Exception('abstract method')
 
+    # MUST override
     def escalation_level_name(self, esc_level):
         """human readable name for the given escalation level (i.e.,
         'district team', 'MoH', 'regional supervisor'"""
         raise Exception('abstract method')
 
+    # MAY override
+    @property
+    def notify_sms(self):
+        """whether to send out alerts via sms. by default, sms will be
+        sent only if 'sms text' is provided. if you override this to
+        return True, sms alerts will always be sent"""
+        return self.sms_text is not None
+
+    def sms_content(self):
+        """content of the sms alert message. defaults to 'sms text';
+        uses the text shown on the web dashboard as a fallback"""
+        return self.sms_text or self.text
+
+    # MAY override
+    def sms_users(self):
+        """list of users who will receive the sms alert. by default,
+        this will be the same set of users who see the alert on the
+        web dashboard. override this function to change.
+
+        NOTE: sms alerts are only sent when the alert is first created;
+          additional smses are NOT sent when the alert is escalated
+        NOTE: in general, if someone receives an alert via sms, make
+          sure the alert will also be on their web dashboard, so they
+          can take action on it if necessary
+        """
+        return self.users_for_escalation_level(self.next_escalation_level(None))
