@@ -2,6 +2,9 @@ from django.conf import settings
 import itertools
 from models import Notification, NotificationComment, user_name
 from importutil import dynamic_import
+from rapidsms.contrib.messaging.utils import send_message
+from rapidsms.models import Connection
+import logging
 
 def get_alert_generators(type, *args, **kwargs):
     """
@@ -44,7 +47,15 @@ def trigger_notifications():
             comment.save()
 
             def sms_send(user, content):
-                print 'stub out send sms [%s] to [%s]' % (content, user_name(user))
+                try:
+                    conn = Connection.objects.get(contact__user=user)
+                except:
+                    print 'user [%s] has no contact info; can\'t send sms alert' % user_name(user)
+                    logging.exception('error retriving contact info for user [%s]; can\'t send sms alert' % user_name(user))
+                    return
+
+                send_message(conn, content)
+                print 'sent sms alert to [%s]' % user_name(user)
 
             notif.trigger_sms(sms_send)
 
