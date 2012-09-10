@@ -29,19 +29,24 @@ def get_notifications():
 
 def trigger_notifications():
     for notif in get_notifications():
-        try:
-            existing = Notification.objects.get(uid=notif.uid)
-            #alert already generated
-            #todo: add hook for amending or auto-dismissing alerts here (might not be the right place for auto-dismiss)?
-            print 'alert already exists', notif.uid
-        except Notification.DoesNotExist:
-            #new alert; save to db
-            notif.initialize()
-            notif.save()
-            print 'new alert', notif
-            #'created' comment
-            comment = NotificationComment(notification=notif, user=None, text='notification created')
-            comment.save()
+        print trigger(notif)
+
+def trigger(notif):
+    try:
+        existing = Notification.objects.get(uid=notif.uid)
+        #alert already generated
+        #todo: add hook for amending or auto-dismissing alerts here (might not be the right place for auto-dismiss)?
+        return 'alert already exists %s' % notif.uid
+    except Notification.DoesNotExist:
+        #new alert; save to db
+        notif.initialize()
+        notif.save()
+
+        #'created' comment
+        comment = NotificationComment(notification=notif, user=None, text='notification created')
+        comment.save()
+
+        return 'new alert %s' % notif
 
 def auto_escalate():
     for notif in Notification.objects.filter(is_open=True):

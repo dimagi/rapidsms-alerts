@@ -17,6 +17,14 @@ class Notification(models.Model):
     alert_type = models.CharField(max_length=256) #fully-qualified python name of the corresponding AlertType class
     originating_location = models.ForeignKey(Location, blank=True, null=True)
 
+    data_json = models.TextField(null=True, blank=True) # custom data
+    @property
+    def data(self):
+        return json.loads(self.data_json) if self.data_json else {}
+    @data.setter
+    def data(self, val):
+        self.data_json = json.dumps(val) if val else None
+
     owner = models.ForeignKey(User, null=True, blank=True)
     is_open = models.BooleanField(default=True)
     escalation_level = models.CharField(max_length=100)
