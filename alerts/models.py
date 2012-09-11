@@ -5,6 +5,7 @@ from django.conf import settings
 from django.utils.dateformat import format as format_date
 from alerts.importutil import dynamic_import
 from datetime import datetime
+import json
 
 class Notification(models.Model):
     uid = models.CharField(max_length=256)
