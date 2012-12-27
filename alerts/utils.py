@@ -15,7 +15,6 @@ def get_alert_generators(type, *args, **kwargs):
     All exceptions raised while importing generators are
     allowed to propagate, to avoid masking errors.
     """
-
     try:
         registered_generators = getattr(settings, {
             'alert': 'LOGISTICS_ALERT_GENERATORS',
@@ -24,7 +23,7 @@ def get_alert_generators(type, *args, **kwargs):
     except AttributeError:
         # TODO: should this fail harder?
         registered_generators = []
-        
+
     return [dynamic_import(g)(*args, **kwargs) for g in registered_generators]
 
 def get_notifications():
@@ -49,20 +48,20 @@ def trigger(notif):
         comment = NotificationComment(notification=notif, user=None, text='notification created')
         comment.save()
 
+        def sms_send(user, content):
+            try:
+                conn = Connection.objects.get(contact__user=user)
+            except:
+                print 'user [%s] has no contact info; can\'t send sms alert' % user_name(user)
+                logging.exception('error retriving contact info for user [%s]; can\'t send sms alert' % user_name(user))
+                return
+
+            send_message(conn, content)
+            print 'sent sms alert to [%s]' % user_name(user)
+
+        notif.trigger_sms(sms_send)
+
         return 'new alert %s' % notif
-
-            def sms_send(user, content):
-                try:
-                    conn = Connection.objects.get(contact__user=user)
-                except:
-                    print 'user [%s] has no contact info; can\'t send sms alert' % user_name(user)
-                    logging.exception('error retriving contact info for user [%s]; can\'t send sms alert' % user_name(user))
-                    return
-
-                send_message(conn, content)
-                print 'sent sms alert to [%s]' % user_name(user)
-
-            notif.trigger_sms(sms_send)
 
 def auto_escalate():
     for notif in Notification.objects.filter(is_open=True):
