@@ -27,7 +27,9 @@ def get_alert_generators(type, *args, **kwargs):
 def get_notifications():
     return itertools.chain(*get_alert_generators('notif'))
 
-def trigger_notifications():
+def trigger_notifications(router=None):
+    # add the optional 'router' argument to make this task
+    # backwards-compatible with the old rapidsms scheduler
     for notif in get_notifications():
         print trigger(notif)
 
