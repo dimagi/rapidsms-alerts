@@ -78,6 +78,9 @@ Notification objects contain:
 
 * a key that uniquely defines the alert condition
 
+Notifications can also be sent via SMS, in addition to displaying on
+the user's web dashboard. See below for more information.
+
 Since notifications are triggered via cron, the key is important to
 keep the same alert from being triggered over and over. The key should
 uniquely identify the source cause of the alert (e.g., late report;
@@ -130,11 +133,36 @@ to configure what username is shown with these comment entries.
 Auto-escalation must be triggered by a separate cron job. The
 'alert_maintenance' management command handles this.
 
-Wishlist
---------
+Notifications via SMS
+---------------------
 
-* SMS subscription by alert type/priority
+Notifications can also be sent to users via SMS, in addition to
+displaying on their web dashboard. However, the functionality is more
+limited than for web alerts. Namely:
 
-* Monthly aggregation and summaries
+* SMS is only sent out when the alert is first created; when the
+  alert is escalated, it will NOT trigger SMSes to the supervisors. This
+  is because it will be annoying for supervisors to receive alert
+  escalations on an individual basis; for SMS, they instead wish to
+  receive this information on an aggregate level.
 
+* Alerts cannot be acted upon via SMS. You must still use the web
+  dashboard to follow up/resolve/escalate.
 
+To send an alert via SMS, set the 'sms_text' property on the Notification
+object. Or, in the NotificationType class, override notify_sms() to return
+'true'. If you don't specify sms_text, the caption on the web dashboard
+will be used as a fallback.
+
+By default, the set of users that receives the sms is the same set that
+will see it on the web dashboard (but remember, escalations don't trigger
+SMS). You can customize the set of user that receive the alert by overriding
+the sms_users() method in the NotificationType class to return a list of
+alternate recipients.
+
+Make sure that any user receiving an sms alert can
+also see the alert on their web dashboard, or else they won't be able to act
+on the alert!
+
+Also make sure that intended recipients have SMS contact information linked
+to their HealthProvider record in the system.
