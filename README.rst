@@ -1,6 +1,8 @@
 rapidsms-alerts
 ===============
 
+**This repository is fully deprecated. It has been merged with [the cStock codebase](https://github.com/dimagi/logistics).**
+
 Web-based configurable alerts.
 
 This app currently supports two modes of alerts:
